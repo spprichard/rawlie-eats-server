@@ -17,7 +17,18 @@ extension DateFormatter {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter
     }()
+    
+    static let winnipeg: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        
+        formatter.timeZone = TimeZone(abbreviation: "CDT")
+        return formatter
+    }()
 }
+
+
 
 
 
@@ -45,17 +56,48 @@ extension DateFormatter {
 
 final class EatController {
     var decoder = JSONDecoder()
+    var encoder = JSONEncoder()
+    var lastFeed: Date?
     
     init() {
         self.decoder.dateDecodingStrategy = .formatted(DateFormatter.iso8601Full)
+        self.encoder.dateEncodingStrategy = .formatted(DateFormatter.winnipeg)
+        self.lastFeed = nil
     }
     
-    func handle(_ req: Request) throws -> EventLoopFuture<Response> {
+    func handle(_ req: Request) throws -> EventLoopFuture<HTTPResponse> {
         print("Handle endpoint hit.")
         let data = try req.content.decode(json: EatEvent.self, using: self.decoder)
         
-        return data.flatMap { result in
-            return try! result.encode(for: req)
+        return data.map { result in
+            self.lastFeed = result.timestamp
+            
+            let resp = EatEventResponse(status: .acknowledged, message: "Feed event recieved")
+            let responseData = try self.encoder.encode(resp)
+            let body = HTTPBody(data: responseData)
+            
+            return HTTPResponse(
+                status: .accepted,
+                headers: req.http.headers,
+                body: body)
         }
+    }
+    
+    func status(_ req: Request) throws -> Response {
+        guard let time = self.lastFeed else {
+            return try self.returnWith(message: "Rawlie hasn't been feed yet, you should feed her!", from: req)
+        }
+        
+        
+        let date = DateFormatter.winnipeg.string(from: time)
+        return try returnWith(message: "Rawlie was last feed at \(date)", from: req)
+    }
+    
+    private func returnWith(message: String, from req: Request) throws -> Response {
+        let resp = EatStatusResponse(lastFeed: self.lastFeed, message: message)
+        let respData = try self.encoder.encode(resp)
+        let body = HTTPBody(data: respData)
+        
+        return req.response(body)
     }
 }

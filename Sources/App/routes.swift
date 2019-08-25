@@ -4,11 +4,12 @@ import Vapor
 public func routes(_ router: Router) throws {
     let eatsController = EatController()
     
-    let apiV1Group = router.grouped("api", "v1")
+    let apiV1Group = router.grouped("api", "v1", "eats")
     
     router.get("health") { req in
         return Health(status: .healthy)
     }
     
-    apiV1Group.post("eats", use: eatsController.handle)
+    apiV1Group.get("status", use: eatsController.status)
+    apiV1Group.post(use: eatsController.handle)
 }
