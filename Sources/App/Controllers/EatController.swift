@@ -85,12 +85,12 @@ final class EatController {
     
     func status(_ req: Request) throws -> Response {
         guard let time = self.lastFeed else {
-            return try self.returnWith(message: "Rawlie hasn't been feed yet, you should feed her!", from: req)
+            return try self.returnWith(message: "Rawlie hasn't been fed yet, you should feed her!", from: req)
         }
         
         
         let date = DateFormatter.winnipeg.string(from: time)
-        return try returnWith(message: "Rawlie was last feed at \(date)", from: req)
+        return try returnWith(message: "Rawlie was last fed at \(date)", from: req)
     }
     
     private func returnWith(message: String, from req: Request) throws -> Response {
